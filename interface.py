@@ -1,9 +1,11 @@
 import asyncio
+import logging
 import argparse
-from network import Server
+from kademlia.network import Server
+
 
 # command line interface
-class app(object):
+class App(object):
     def __init__(self):
         self.parser = argparse.ArgumentParser(description='A p2p key-value databse.')
 
@@ -16,14 +18,15 @@ class app(object):
         self.parser.add_argument('-b', '--bootstrap',
                                  nargs = 2,
                                  dest = 'bootstrap',
-                                 metavar=('bootstrap node address', 'bootstrap node port'))
-        (options, args) = self.parser.parse_args()
+                                 metavar=('<address>', '<port>'),
+                                 help = "Start a node and connect to bootstrap node in existing network")
+        options = self.parser.parse_args()
         if options.first_node: return None
         else:
             try:
                 return options.bootstrap
             except:
-                print('To start a node and join existing network, you need a bootstrap node to connect the exist network.')
+                print('To join existing network, you need a bootstrap node to connect the exist network.')
 
     def print_help(self):
         commands = {
@@ -34,8 +37,8 @@ class app(object):
             'quit': 'exit the system'
         }
         self.parser.print_help()
-        print('\n\tCLI commands:')
-        for command, description in commands:
+        print('\nCLI commands:')
+        for command, description in commands.items():
             print( "%-10s %s" % (command, description) )
 
     def quit(self, server, loop):
@@ -43,11 +46,20 @@ class app(object):
         loop.close()
 
     def run(self):
-        print("""Welcome to this p2p key-value system.
-            To find out what other commands exist, type 'help'""")
+        print("""Welcome to this p2p key-value system. To find out what other commands exist, type 'help'""")
 
+        # log
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        log = logging.getLogger('kademlia')
+        log.addHandler(handler)
+        log.setLevel(logging.DEBUG)
+
+        # command information
         bootstrap_node =self.parse_commandline()
 
+        # create server and run
         self.loop = asyncio.get_event_loop()
         self.loop.set_debug(True)
         self.server = Server()
@@ -57,7 +69,7 @@ class app(object):
             self.loop.run_until_complete(self.server.bootstrap([bootstrap_node]))
         while True:
             try:
-                io = input('Command: ')
+                io = input('Command: ').lstrip().rstrip()
                 if io == 'help':
                     self.print_help()
                 elif io == 'get':
@@ -76,6 +88,15 @@ class app(object):
                     print("Usage: <key>")
                 elif io == 'quit':
                     print('Bye ~ Have a nice day.')
-                    self.quit()
+                    self.quit(self.server, self.loop)
+                    break
+                else:
+                    print('Sorry! Invalid command.')
             except EOFError:
-                self.quit()
+                self.quit(self.server, self.loop)
+                break
+
+
+if __name__ == '__main__':
+    app = App()
+    app.run()
