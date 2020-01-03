@@ -51,28 +51,7 @@ class App(object):
         server.stop()
         loop.close()
 
-    def run(self):
-        print("""Welcome to this p2p key-value system. To find out what other commands exist, type 'help'""")
-
-        # log
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        log = logging.getLogger('kademlia')
-        log.addHandler(handler)
-        log.setLevel(logging.DEBUG)
-
-        # command information
-        bootstrap_node, port =self.parse_commandline()
-        print(bootstrap_node)
-        # create server and run
-        self.loop = asyncio.get_event_loop()
-        self.loop.set_debug(True)
-        self.server = Server()
-        self.loop.run_until_complete(self.server.listen(int(port[0])))
-        if bootstrap_node:
-            bootstrap_node = (bootstrap_node[0], int(bootstrap_node[1]))
-            self.loop.run_until_complete(self.server.bootstrap([bootstrap_node]))
+    def command_loop(self):
         while True:
             try:
                 io = input('Command: ').lstrip().rstrip()
@@ -101,6 +80,32 @@ class App(object):
             except EOFError:
                 self.quit(self.server, self.loop)
                 break
+
+    def run(self):
+        print("""Welcome to this p2p key-value system. To find out what other commands exist, type 'help'""")
+
+        # log
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        log = logging.getLogger('kademlia')
+        log.addHandler(handler)
+        log.setLevel(logging.DEBUG)
+
+        # command information
+        bootstrap_node, port =self.parse_commandline()
+
+        # create server and run
+        self.loop = asyncio.get_event_loop()
+        self.loop.set_debug(True)
+        self.server = Server()
+        self.loop.run_until_complete(self.server.listen(int(port[0])))
+        if bootstrap_node:
+            bootstrap_node = (bootstrap_node[0], int(bootstrap_node[1]))
+            print(bootstrap_node)
+            self.loop.run_until_complete(self.server.bootstrap([bootstrap_node]))
+        self.loop.run_until_complete(self.command_loop())
+
 
 
 if __name__ == '__main__':
