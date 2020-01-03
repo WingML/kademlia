@@ -3,7 +3,7 @@ import logging
 
 from kademlia.node import Node, NodeHeap
 from kademlia.utils import gather_dict
-
+from kademlia.config import *
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -125,6 +125,9 @@ class ValueSpiderCrawl(SpiderCrawl):
         peer = self.nearest_without_value.popleft()
         if peer:
             await self.protocol.call_store(peer, self.node.id, value)
+
+        if value == DELETE_SIGN:
+            value = None
         return value
 
 

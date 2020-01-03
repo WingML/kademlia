@@ -20,11 +20,17 @@ class App(object):
                                  dest = 'bootstrap',
                                  metavar=('<address>', '<port>'),
                                  help = "Start a node and connect to bootstrap node in existing network")
+        self.parser.add_argument('-p', '--port',
+                                 nargs = 1,
+                                 dest = 'port',
+                                 metavar=('<port>'),
+                                 default = [8468],
+                                 help = 'Server listen to this port.')
         options = self.parser.parse_args()
-        if options.first_node: return None
+        if options.first_node: return (None, options.port)
         else:
             try:
-                return options.bootstrap
+                return (options.bootstrap, options.port)
             except:
                 print('To join existing network, you need a bootstrap node to connect the exist network.')
 
@@ -57,13 +63,13 @@ class App(object):
         log.setLevel(logging.DEBUG)
 
         # command information
-        bootstrap_node =self.parse_commandline()
-
+        bootstrap_node, port =self.parse_commandline()
+        print(bootstrap_node)
         # create server and run
         self.loop = asyncio.get_event_loop()
         self.loop.set_debug(True)
         self.server = Server()
-        self.loop.run_until_complete(self.server.listen(8468))
+        self.loop.run_until_complete(self.server.listen(int(port[0])))
         if bootstrap_node:
             bootstrap_node = (bootstrap_node[0], int(bootstrap_node[1]))
             self.loop.run_until_complete(self.server.bootstrap([bootstrap_node]))
