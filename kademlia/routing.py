@@ -89,6 +89,7 @@ class TableTraverser:
     def __init__(self, table, startNode):
         index = table.get_bucket_for(startNode)
         table.buckets[index].touch_last_updated()
+        print(table.buckets[index].nodes.items())
         self.current_nodes = table.buckets[index].get_nodes()
         self.left_buckets = table.buckets[:index]
         self.right_buckets = table.buckets[(index + 1):]
@@ -183,6 +184,7 @@ class RoutingTable:
         k = k or self.ksize
         nodes = []
         for neighbor in TableTraverser(self, node):
+            print(neighbor.ip)
             notexcluded = exclude is None or not neighbor.same_home_as(exclude)
             if neighbor.id != node.id and notexcluded:
                 heapq.heappush(nodes, (node.distance_to(neighbor), neighbor))

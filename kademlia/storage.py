@@ -78,7 +78,9 @@ class ForgetfulStorage(IStorage):
     def iter_older_than(self, seconds_old):
         min_birthday = time.monotonic() - seconds_old
         zipped = self._triple_iter()
+        # take older than min birthday
         matches = takewhile(lambda r: min_birthday >= r[1], zipped)
+        # return key-value pair list
         return list(map(operator.itemgetter(0, 2), matches))
 
     def _triple_iter(self):

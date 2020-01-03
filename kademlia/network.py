@@ -5,6 +5,7 @@ import random
 import pickle
 import asyncio
 import logging
+import time
 
 from kademlia.protocol import KademliaProtocol
 from kademlia.utils import digest
@@ -12,6 +13,7 @@ from kademlia.storage import ForgetfulStorage
 from kademlia.node import Node
 from kademlia.crawling import ValueSpiderCrawl
 from kademlia.crawling import NodeSpiderCrawl
+from kademlia.config import *
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -118,7 +120,7 @@ class Server:
 
         Args:
             addrs: A `list` of (ip, port) `tuple` pairs.  Note that only IP
-                   addresses are acceptable - hostnames will cause an error.
+                   addresses are acceptable - hostnames cause an error.
         """
         log.debug("Attempting to bootstrap node with %i initial contacts",
                   len(addrs))
@@ -154,6 +156,14 @@ class Server:
                                   self.ksize, self.alpha)
         return await spider.find()
 
+    async def delete(self, key):
+        '''
+        delete a key if the network has it
+        :param key:
+        :return:
+        '''
+        return await self.set(key, DELETE_SIGN)
+
     async def set(self, key, value):
         """
         Set the given string key to the given value in the network.
@@ -184,11 +194,15 @@ class Server:
         nodes = await spider.find()
         log.info("setting '%s' on %s", dkey.hex(), list(map(str, nodes)))
 
+        # get data birthday
+        birthday  = time.time()
+
         # if this node is close too, then store here as well
         biggest = max([n.distance_to(node) for n in nodes])
         if self.node.distance_to(node) < biggest:
-            self.storage[dkey] = value
-        results = [self.protocol.call_store(n, dkey, value) for n in nodes]
+            self.storage[dkey] = (value, birthday)
+        # concurrent storage of k nodes
+        results = [self.protocol.call_store(n, dkey, (value, birthday)) for n in nodes]
         # return true only if at least one store call succeeded
         return any(await asyncio.gather(*results))
 
