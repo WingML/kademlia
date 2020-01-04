@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import argparse
+from time import sleep
+from threading import Thread
 from kademlia.network import Server
 
 
@@ -47,39 +49,21 @@ class App(object):
         for command, description in commands.items():
             print( "%-10s %s" % (command, description) )
 
-    def quit(self, server, loop):
-        server.stop()
-        loop.close()
+    def quit(self):
+        self.server.stop()
+        self.loop.close()
 
-    def command_loop(self):
-        while True:
-            try:
-                io = input('Command: ').lstrip().rstrip()
-                if io == 'help':
-                    self.print_help()
-                elif io == 'get':
-                    print("Usage:<key>")
-                    args = input().split(' ')
-                    if len(args) != 1: print("Number of parameters does not match.")
-                    else:
-                        result = self.loop.run_until_complete(self.server.get(args[0]))
-                        print("Get result:", result)
-                elif io == 'put':
-                    print("Usage: <key> <value>")
-                    args = input().split(' ')
-                    if len(args) != 2: print('Number of parameters dose not match.')
-                    self.loop.run_until_complete(self.server.set(args[0], args[1]))
-                elif io == 'delete':
-                    print("Usage: <key>")
-                elif io == 'quit':
-                    print('Bye ~ Have a nice day.')
-                    self.quit(self.server, self.loop)
-                    break
-                else:
-                    print('Sorry! Invalid command.')
-            except EOFError:
-                self.quit(self.server, self.loop)
-                break
+    def start_loop(self):
+        self.loop.set_debug(True)
+        asyncio.set_event_loop(self.loop)
+        try:
+            self.loop.run_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.server.stop()
+            self.loop.close()
+
 
     def run(self):
         print("""Welcome to this p2p key-value system. To find out what other commands exist, type 'help'""")
@@ -96,15 +80,48 @@ class App(object):
         bootstrap_node, port =self.parse_commandline()
 
         # create server and run
-        self.loop = asyncio.get_event_loop()
-        self.loop.set_debug(True)
+        self.loop = asyncio.new_event_loop()
+        self.t = Thread(target=self.start_loop)
+        self.t.setDaemon(True)
+        self.t.start()
+
+
         self.server = Server()
-        self.loop.run_until_complete(self.server.listen(int(port[0])))
+        asyncio.run_coroutine_threadsafe(self.server.listen(int(port[0])), self.loop)
         if bootstrap_node:
             bootstrap_node = (bootstrap_node[0], int(bootstrap_node[1]))
-            print(bootstrap_node)
-            self.loop.run_until_complete(self.server.bootstrap([bootstrap_node]))
-        self.loop.run_until_complete(self.command_loop())
+            asyncio.run_coroutine_threadsafe(self.server.bootstrap([bootstrap_node]), self.loop)
+
+        while True:
+            sleep(0.2)
+            try:
+                io = input('Command: ').lstrip().rstrip()
+                if io == 'help':
+                    self.print_help()
+                elif io == 'get':
+                    print("Usage:<key>")
+                    args = input().split(' ')
+                    if len(args) != 1: print("Number of parameters does not match.")
+                    else:
+                        result = asyncio.run_coroutine_threadsafe(self.server.get(args[0]), self.loop)
+                        print("Get result:", result)
+                elif io == 'put':
+                    print("Usage: <key> <value>")
+                    args = input().split(' ')
+                    if len(args) != 2: print('Number of parameters dose not match.')
+                    asyncio.run_coroutine_threadsafe(self.server.set(args[0], args[1]), self.loop)
+                elif io == 'delete':
+                    print("Usage: <key>")
+                elif io == 'quit':
+                    print('Bye ~ Have a nice day.')
+                    # self.quit()
+                    self.loop.call_soon_threadsafe(self.quit)
+                    break
+                else:
+                    print('Sorry! Invalid command.')
+            except EOFError:
+                self.loop.call_soon_threadsafe(self.quit)
+                break
 
 
 
