@@ -11,6 +11,10 @@ class App(object):
     def __init__(self):
         self.parser = argparse.ArgumentParser(description='A p2p key-value databse.')
 
+        self.loop = asyncio.new_event_loop()
+        self.t = Thread(target=self.start_loop)
+        self.server = Server()
+
     def parse_commandline(self):
         self.parser.add_argument('-f', '--first',
                                  action = 'store_true',
@@ -54,6 +58,7 @@ class App(object):
         self.loop.close()
 
     def start_loop(self):
+
         self.loop.set_debug(True)
         asyncio.set_event_loop(self.loop)
         try:
@@ -63,7 +68,6 @@ class App(object):
         finally:
             self.server.stop()
             self.loop.close()
-
 
     def run(self):
         print("""Welcome to this p2p key-value system. To find out what other commands exist, type 'help'""")
@@ -79,21 +83,17 @@ class App(object):
         # command information
         bootstrap_node, port =self.parse_commandline()
 
-        # create server and run
-        self.loop = asyncio.new_event_loop()
-        self.t = Thread(target=self.start_loop)
+        # run subthread
         self.t.setDaemon(True)
         self.t.start()
 
-
-        self.server = Server()
-        asyncio.run_coroutine_threadsafe(self.server.listen(int(port[0])), self.loop)
+        asyncio.run_coroutine_threadsafe(self.server.listen(int(port[0])), self.loop).result()
         if bootstrap_node:
             bootstrap_node = (bootstrap_node[0], int(bootstrap_node[1]))
-            asyncio.run_coroutine_threadsafe(self.server.bootstrap([bootstrap_node]), self.loop)
+            re = asyncio.run_coroutine_threadsafe(self.server.bootstrap([bootstrap_node]), self.loop).result()
 
         while True:
-            sleep(0.2)
+            sleep(0.4)
             try:
                 io = input('Command: ').lstrip().rstrip()
                 if io == 'help':
@@ -103,18 +103,17 @@ class App(object):
                     args = input().split(' ')
                     if len(args) != 1: print("Number of parameters does not match.")
                     else:
-                        result = asyncio.run_coroutine_threadsafe(self.server.get(args[0]), self.loop)
+                        result = asyncio.run_coroutine_threadsafe(self.server.get(args[0]), self.loop).result()[0]
                         print("Get result:", result)
                 elif io == 'put':
                     print("Usage: <key> <value>")
                     args = input().split(' ')
                     if len(args) != 2: print('Number of parameters dose not match.')
-                    asyncio.run_coroutine_threadsafe(self.server.set(args[0], args[1]), self.loop)
+                    asyncio.run_coroutine_threadsafe(self.server.set(args[0], args[1]), self.loop).result()
                 elif io == 'delete':
                     print("Usage: <key>")
                 elif io == 'quit':
                     print('Bye ~ Have a nice day.')
-                    # self.quit()
                     self.loop.call_soon_threadsafe(self.quit)
                     break
                 else:
@@ -122,7 +121,6 @@ class App(object):
             except EOFError:
                 self.loop.call_soon_threadsafe(self.quit)
                 break
-
 
 
 if __name__ == '__main__':

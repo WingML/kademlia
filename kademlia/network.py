@@ -126,7 +126,6 @@ class Server:
                   len(addrs))
         cos = list(map(self.bootstrap_node, addrs))
         gathered = await asyncio.gather(*cos)
-        print('gathered done')
         nodes = [node for node in gathered if node is not None]
         spider = NodeSpiderCrawl(self.protocol, self.node, nodes,
                                  self.ksize, self.alpha)
