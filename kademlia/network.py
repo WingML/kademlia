@@ -146,7 +146,9 @@ class Server:
         dkey = digest(key)
         # if this node has it, return it
         if self.storage.get(dkey) is not None:
-            return self.storage.get(dkey)
+            # answer: [[value, birthday], ...]
+            answer = self.storage.get(dkey)
+            return answer if answer[0] != DELETE_SIGN else None
         node = Node(dkey)
         nearest = self.protocol.router.find_neighbors(node)
         if not nearest:
@@ -154,7 +156,8 @@ class Server:
             return None
         spider = ValueSpiderCrawl(self.protocol, node, nearest,
                                   self.ksize, self.alpha)
-        return await spider.find()
+        answer = await spider.find()
+        return answer if answer != DELETE_SIGN else None
 
     async def delete(self, key):
         '''

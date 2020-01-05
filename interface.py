@@ -93,7 +93,7 @@ class App(object):
             re = asyncio.run_coroutine_threadsafe(self.server.bootstrap([bootstrap_node]), self.loop).result()
 
         while True:
-            sleep(0.4)
+            sleep(0.3)
             try:
                 io = input('Command: ').lstrip().rstrip()
                 if io == 'help':
@@ -103,15 +103,21 @@ class App(object):
                     args = input().split(' ')
                     if len(args) != 1: print("Number of parameters does not match.")
                     else:
-                        result = asyncio.run_coroutine_threadsafe(self.server.get(args[0]), self.loop).result()[0]
+                        result = asyncio.run_coroutine_threadsafe(self.server.get(args[0]), self.loop).result()
+                        result = result[0] if result else None
                         print("Get result:", result)
                 elif io == 'put':
                     print("Usage: <key> <value>")
                     args = input().split(' ')
                     if len(args) != 2: print('Number of parameters dose not match.')
-                    asyncio.run_coroutine_threadsafe(self.server.set(args[0], args[1]), self.loop).result()
+                    else:
+                        asyncio.run_coroutine_threadsafe(self.server.set(args[0], args[1]), self.loop).result()
                 elif io == 'delete':
                     print("Usage: <key>")
+                    args = input().split(' ')
+                    if len(args) != 1: print('Number of parameters dose not match.')
+                    else:
+                        asyncio.run_coroutine_threadsafe(self.server.delete(args[0]), self.loop).result()
                 elif io == 'quit':
                     print('Bye ~ Have a nice day.')
                     self.loop.call_soon_threadsafe(self.quit)

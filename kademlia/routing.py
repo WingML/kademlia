@@ -184,7 +184,6 @@ class RoutingTable:
         k = k or self.ksize
         nodes = []
         for neighbor in TableTraverser(self, node):
-            print(neighbor.ip)
             notexcluded = exclude is None or not neighbor.same_home_as(exclude)
             if neighbor.id != node.id and notexcluded:
                 heapq.heappush(nodes, (node.distance_to(neighbor), neighbor))

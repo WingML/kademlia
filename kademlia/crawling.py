@@ -92,7 +92,7 @@ class ValueSpiderCrawl(SpiderCrawl):
             if not response.happened():
                 toremove.append(peerid)
             elif response.has_value():
-                found_values.append(response.get_value())
+                found_values.append((response.get_value()), peerid)
             else:
                 peer = self.nearest.get_node(peerid)
                 self.nearest_without_value.push(peer)
@@ -113,21 +113,22 @@ class ValueSpiderCrawl(SpiderCrawl):
         make sure we tell the nearest node that *didn't* have
         the value to store it.
         """
-        value_counts = Counter(values)
-        if len(value_counts) != 1:
-            log.warning("Got multiple values for key %i: %s",
-                        self.node.long_id, str(values))
-
         # return the newest value
-        value = max(map(lambda i: i[0], values))
+        # values: [([value, birthday], peer_id), ...]  peer_id means the peer that data get from
+        birthdays = [value[0][1] for value in values]
+        value = [value[0][0] for value in values][birthdays.index(max(birthdays))]
 
-        # cache
+        # Synchronize cached
+        for v in values:
+            if v[0][0] != value:
+                peer = self.nearest.get_node(v[1])
+                await self.protocol.call_store(peer, self.node.id, value)
+
+        # cache (just one node?)
         peer = self.nearest_without_value.popleft()
         if peer:
             await self.protocol.call_store(peer, self.node.id, value)
 
-        if value == DELETE_SIGN:
-            value = None
         return value
 
 
