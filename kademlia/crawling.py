@@ -3,7 +3,7 @@ import logging
 
 from kademlia.node import Node, NodeHeap
 from kademlia.utils import gather_dict
-
+from kademlia.config import *
 
 log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -117,11 +117,17 @@ class ValueSpiderCrawl(SpiderCrawl):
         if len(value_counts) != 1:
             log.warning("Got multiple values for key %i: %s",
                         self.node.long_id, str(values))
-        value = value_counts.most_common(1)[0][0]
 
+        # return the newest value
+        value = max(map(lambda i: i[0], values))
+
+        # cache
         peer = self.nearest_without_value.popleft()
         if peer:
             await self.protocol.call_store(peer, self.node.id, value)
+
+        if value == DELETE_SIGN:
+            value = None
         return value
 
 

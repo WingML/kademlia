@@ -34,7 +34,7 @@ class App(object):
                                  metavar=('<iprange_l>', '<iprange_r>', '<ports>'),
                                  default=None,
                                  help="Flooding neighbors instead of explicit bootstrapping given node. "
-                                      "Format of <ports>:" \
+                                      "Format of <ports>:"
                                       "I: 9468,8469,8890 (equals [9468, 8469, 8890])"
                                       "II: 8469~8891 (equals list(range(8469, 8892)))"
                                       "Example: 192.168.1.1 192.168.2.0 8468~8470")
@@ -98,7 +98,6 @@ class App(object):
 
         # command information
         flooding_nodes, bootstrap_node, port, timeout =self.parse_commandline()
-        # print(flooding_nodes, bootstrap_node, timeout)
 
         # run subthread
         self.loop = asyncio.new_event_loop()
@@ -122,7 +121,8 @@ class App(object):
                 ports = [int(i) for i in str_ports]
 
             re = asyncio.run_coroutine_threadsafe(self.server.bootstrap(flooding=True, iprange_l=iprange_l,
-                                                                        iprange_r=iprange_r, ports=ports), self.loop).result()
+                                                                        iprange_r=iprange_r, ports=ports),
+                                                  self.loop).result()
 
         while True:
             sleep(0.3)
