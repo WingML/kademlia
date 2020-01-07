@@ -7,7 +7,7 @@ import asyncio
 import logging
 
 from kademlia.protocol import KademliaProtocol
-from kademlia.utils import digest
+from kademlia.utils import *
 from kademlia.storage import ForgetfulStorage
 from kademlia.node import Node
 from kademlia.crawling import ValueSpiderCrawl
@@ -25,7 +25,7 @@ class Server:
 
     protocol_class = KademliaProtocol
 
-    def __init__(self, ksize=20, alpha=3, node_id=None, storage=None):
+    def __init__(self, ksize=20, alpha=3, node_id=None, storage=None, timeout=5):
         """
         Create a server instance.  This will start listening on the given port.
 
@@ -35,6 +35,7 @@ class Server:
             node_id: The id for this node on the network.
             storage: An instance that implements
                      :interface:`~kademlia.storage.IStorage`
+            timeout: Maximum ping time, initial param for RPCProtocol.wait_timeout
         """
         self.ksize = ksize
         self.alpha = alpha
@@ -44,6 +45,7 @@ class Server:
         self.protocol = None
         self.refresh_loop = None
         self.save_state_loop = None
+        self.timeout = timeout
 
     def stop(self):
         if self.transport is not None:
@@ -56,7 +58,7 @@ class Server:
             self.save_state_loop.cancel()
 
     def _create_protocol(self):
-        return self.protocol_class(self.node, self.storage, self.ksize)
+        return self.protocol_class(self.node, self.storage, self.ksize, self.timeout)
 
     async def listen(self, port, interface='0.0.0.0'):
         """
@@ -112,16 +114,32 @@ class Server:
         neighbors = self.protocol.router.find_neighbors(self.node)
         return [tuple(n)[-2:] for n in neighbors]
 
-    async def bootstrap(self, addrs):
+    async def bootstrap(self, addrs=None, flooding=False, iprange_l=None, iprange_r=None, ports=None):
         """
         Bootstrap the server by connecting to other known nodes in the network.
 
         Args:
             addrs: A `list` of (ip, port) `tuple` pairs.  Note that only IP
                    addresses are acceptable - hostnames will cause an error.
+                   If None, flooding must be True and a prefix of ip must be
+                   provided.
+            flooding: Boolean, default False when addrs is not empty.
+            iprange_l, iprange_r: Str, the range of ips to flood.
+                    E.g. if iprange_l='192.168.2.3', iprange_r='192.168.2.239',
+                    then the range of flooding is 192.168.2.3~192.168.2.238.
+            ports: A 'list' of possible ports. E.g. list(range(8468, 8990)); [8468, 8470].
         """
+        if addrs is None:
+            if flooding == False:
+                raise Exception('NoneType of addrs: flooding must be True in this case!')
+
+            # flooding through all ips under the given prefix
+            print('In flooding mode:')
+            addrs = to_flood(iprange_l, iprange_r, ports)
+
         log.debug("Attempting to bootstrap node with %i initial contacts",
                   len(addrs))
+
         cos = list(map(self.bootstrap_node, addrs))
         gathered = await asyncio.gather(*cos)
         nodes = [node for node in gathered if node is not None]
