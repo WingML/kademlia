@@ -12,9 +12,9 @@ log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class KademliaProtocol(RPCProtocol):
-    def __init__(self, source_node, storage, ksize, timeout):
+    def __init__(self, source_node, storage, ksize, timeout, record=False):
         RPCProtocol.__init__(self, wait_timeout=timeout)
-        self.router = RoutingTable(self, ksize, source_node)
+        self.router = RoutingTable(self, ksize, source_node, record=record)
         self.storage = storage
         self.source_node = source_node
 

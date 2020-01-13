@@ -20,14 +20,14 @@ def to_flood(iprange_l, iprange_r, ports):
 
     addrs = []
     for ip in range(ip_l, ip_r):
-        if ip & 0xff == 0 or ip & 0xff00 == 0:
+        # if ip & 0xff == 0 or ip & 0xff00 == 0:
+        if ip & 0xff == 0:
             continue
 
         dec_ip = dec2ip(ip)
         for port in ports:
             addr = (dec_ip, port)
             addrs.append(addr)
-
     return addrs
 
 

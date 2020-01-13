@@ -3,7 +3,6 @@ Package for interacting on the network at a high level.
 """
 import random
 import pickle
-import asyncio
 import logging
 import time
 
@@ -27,7 +26,7 @@ class Server:
 
     protocol_class = KademliaProtocol
 
-    def __init__(self, ksize=20, alpha=3, node_id=None, storage=None, timeout=5):
+    def __init__(self, ksize=20, alpha=3, node_id=None, storage=None, timeout=5, record=False):
         """
         Create a server instance.  This will start listening on the given port.
 
@@ -48,6 +47,14 @@ class Server:
         self.refresh_loop = None
         self.save_state_loop = None
         self.timeout = timeout
+        self.record = record
+        if self.record == True:
+            print('In record mode:')
+
+    def reset(self, **kwargs):
+        for k, v in kwargs.items():
+            print('reset {} to {}'.format(k, v))
+            self.k = v
 
     def stop(self):
         if self.transport is not None:
@@ -60,7 +67,7 @@ class Server:
             self.save_state_loop.cancel()
 
     def _create_protocol(self):
-        return self.protocol_class(self.node, self.storage, self.ksize, self.timeout)
+        return self.protocol_class(self.node, self.storage, self.ksize, self.timeout, self.record)
 
     async def listen(self, port, interface='0.0.0.0'):
         """
@@ -150,6 +157,7 @@ class Server:
         return await spider.find()
 
     async def bootstrap_node(self, addr):
+        # print('bootstrapping node: {}:{}'.format(addr[0], addr[1]))
         result = await self.protocol.ping(addr, self.node.id)
         return Node(result[1], addr[0], addr[1]) if result[0] else None
 
@@ -171,7 +179,7 @@ class Server:
             log.warning("There are no known neighbors to get key %s", key)
             return None
         spider = ValueSpiderCrawl(self.protocol, node, nearest,
-                                  self.ksize, self.alpha)
+                                  self.ksize, self.alpha, self.record)
         return await spider.find()
 
     async def delete(self, key):
@@ -218,6 +226,7 @@ class Server:
         # if this node is close too, then store here as well
         biggest = max([n.distance_to(node) for n in nodes])
         if self.node.distance_to(node) < biggest:
+            log.info('storing key-value pair on self')
             self.storage[dkey] = (value, birthday)
         # concurrent storage of k nodes
         results = [self.protocol.call_store(n, dkey, (value, birthday)) for n in nodes]

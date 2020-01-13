@@ -23,12 +23,14 @@ class KBucket:
         return list(self.nodes.values())
 
     def split(self):
-        midpoint = (self.range[0] + self.range[1]) / 2
+        # midpoint = (self.range[0] + self.range[1]) / 2
+        midpoint = (self.range[0] + self.range[1]) // 2
         one = KBucket(self.range[0], midpoint, self.ksize)
-        two = KBucket(midpoint + 1, self.range[1], self.ksize)
+        # two = KBucket(midpoint + 1, self.range[1], self.ksize)  # under suspend
+        two = KBucket(midpoint, self.range[1], self.ksize)
         nodes = chain(self.nodes.values(), self.replacement_nodes.values())
         for node in nodes:
-            bucket = one if node.long_id <= midpoint else two
+            bucket = one if node.long_id <= midpoint or node.label is not None else two
             bucket.add_node(node)
 
         return (one, two)
@@ -67,7 +69,7 @@ class KBucket:
             if node.id in self.replacement_nodes:
                 del self.replacement_nodes[node.id]
             self.replacement_nodes[node.id] = node
-            return False
+            return node.label is not None
         return True
 
     def depth(self):
@@ -86,10 +88,16 @@ class KBucket:
 
 
 class TableTraverser:
-    def __init__(self, table, startNode):
+    def __init__(self, table, startNode, record=False):
+        self.record = record
+        if self.record:
+            table.buckets[0].touch_last_updated()
+            print('Record nodes: {}'.format(table.buckets[0].nodes.items()))
+            self.record_nodes = table.buckets[0].get_nodes()
+
         index = table.get_bucket_for(startNode)
         table.buckets[index].touch_last_updated()
-        print(table.buckets[index].nodes.items())
+        print('Initial bucket nodes: {}'.format(table.buckets[index].nodes.items()))
         self.current_nodes = table.buckets[index].get_nodes()
         self.left_buckets = table.buckets[:index]
         self.right_buckets = table.buckets[(index + 1):]
@@ -102,6 +110,9 @@ class TableTraverser:
         """
         Pop an item from the left subtree, then right, then left, etc.
         """
+        if self.record and self.record_nodes:
+            return self.record_nodes.pop()
+
         if self.current_nodes:
             return self.current_nodes.pop()
 
@@ -119,19 +130,21 @@ class TableTraverser:
 
 
 class RoutingTable:
-    def __init__(self, protocol, ksize, node):
+    def __init__(self, protocol, ksize, node, record=False):
         """
         @param node: The node that represents this server.  It won't
         be added to the routing table, but will be needed later to
         determine which buckets to split or not.
         """
+        self.record = record
         self.node = node
         self.protocol = protocol
         self.ksize = ksize
         self.flush()
 
     def flush(self):
-        self.buckets = [KBucket(0, 2 ** 160, self.ksize)]
+        self.buckets = [KBucket(0, 1, self.ksize), KBucket(1, 2 ** 160, self.ksize)]
+        # self.buckets = [KBucket(1, 2 ** 160, self.ksize)]
 
     def split_bucket(self, index):
         one, two = self.buckets[index].split()
@@ -149,13 +162,19 @@ class RoutingTable:
     def remove_contact(self, node):
         index = self.get_bucket_for(node)
         self.buckets[index].remove_node(node)
+        if node.label is not None:
+            self.buckets[0].remove_node(node)
 
     def is_new_node(self, node):
         index = self.get_bucket_for(node)
         return self.buckets[index].is_new_node(node)
 
     def add_contact(self, node):
-        index = self.get_bucket_for(node)
+        if self.record:
+            index = 0
+            node.label = 'r'
+        else:
+            index = self.get_bucket_for(node)
         bucket = self.buckets[index]
 
         # this will succeed unless the bucket is full
@@ -183,11 +202,13 @@ class RoutingTable:
     def find_neighbors(self, node, k=None, exclude=None):
         k = k or self.ksize
         nodes = []
-        for neighbor in TableTraverser(self, node):
+        for neighbor in TableTraverser(self, node, self.record):
             print(neighbor.ip)
             notexcluded = exclude is None or not neighbor.same_home_as(exclude)
             if neighbor.id != node.id and notexcluded:
-                heapq.heappush(nodes, (node.distance_to(neighbor), neighbor))
+                dist_tuple = (node.distance_to(neighbor), neighbor)
+                if self.record == False or dist_tuple not in nodes:
+                    heapq.heappush(nodes, dist_tuple)
             if len(nodes) == k:
                 break
 

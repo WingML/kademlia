@@ -69,10 +69,11 @@ class SpiderCrawl:
 
 
 class ValueSpiderCrawl(SpiderCrawl):
-    def __init__(self, protocol, node, peers, ksize, alpha):
+    def __init__(self, protocol, node, peers, ksize, alpha, record=False):
         SpiderCrawl.__init__(self, protocol, node, peers, ksize, alpha)
         # keep track of the single nearest node without value - per
         # section 2.3 so we can set the key there if found
+        self.record = record
         self.nearest_without_value = NodeHeap(self.node, 1)
 
     async def find(self):
@@ -92,6 +93,11 @@ class ValueSpiderCrawl(SpiderCrawl):
             if not response.happened():
                 toremove.append(peerid)
             elif response.has_value():
+                # add into record list
+                if self.record:
+                    peer = self.nearest.get_node(peerid)
+                    self.protocol.router.add_contact(peer)
+
                 found_values.append(response.get_value())
             else:
                 peer = self.nearest.get_node(peerid)
@@ -178,7 +184,7 @@ class RPCFindResponse:
         return isinstance(self.response[1], dict)
 
     def get_value(self):
-        return self.response[1]['value']
+        return tuple(self.response[1]['value'])
 
     def get_node_list(self):
         """

@@ -44,9 +44,14 @@ class App(object):
                                  metavar='<timeout>',
                                  default=(5, ),
                                  help='Wait timeout for bootstrapping and flooding')
+        self.parser.add_argument('-r', '--record',
+                                 action='store_true',
+                                 dest='record',
+                                 default=False,
+                                 help='If True, record active neighbors in the 0-th k-bucket')
         options = self.parser.parse_args()
         try:
-            return (options.flooding, options.bootstrap, options.port, options.wait_timeout)
+            return (options.flooding, options.bootstrap, options.port, options.wait_timeout, options.record)
         except:
             print('To join existing network, you need a bootstrap node or flooding setting.')
         # if options.first_node: return (options.flooding, options.bootstrap, options.port)
@@ -97,15 +102,17 @@ class App(object):
         log.setLevel(logging.DEBUG)
 
         # command information
-        flooding_nodes, bootstrap_node, port, timeout =self.parse_commandline()
+        flooding_nodes, bootstrap_node, port, timeout, record =self.parse_commandline()
 
         # run subthread
         self.loop = asyncio.new_event_loop()
         self.t = Thread(target=self.start_loop)
-        self.server = Server(timeout=int(timeout[0]))
+        self.server = Server(timeout=int(timeout[0]), record=record)
 
         self.t.setDaemon(True)
         self.t.start()
+
+        # self.server.reset(timeout=int(timeout[0]), record=record)
 
         asyncio.run_coroutine_threadsafe(self.server.listen(int(port[0])), self.loop).result()
         if bootstrap_node is not None:
