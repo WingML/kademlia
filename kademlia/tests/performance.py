@@ -19,7 +19,7 @@ key = 'performance_test'
 value = 'testValue'
 loop.run_until_complete(server.set(key, value))
 
-for i in range(200):
+for i in range(500):
     option = random.randint(1, 3)
     start = time.time()
     if option == 1: # read
@@ -29,9 +29,10 @@ for i in range(200):
     else:
         loop.run_until_complete(server.delete(key))
     end = time.time()
-    print('Operation time: %d' % int(end-start))
+    print('Operation time: %d' % (end-start))
     avg_response_time += (end-start)
-print('Average respone time: %d' % int(avg_response_time/200))
+avg_response_time /= 500
+print('Average respone time: %d' % avg_response_time)
 try:
     loop.run_forever()
 except KeyboardInterrupt:
