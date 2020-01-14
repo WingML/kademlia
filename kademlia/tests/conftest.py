@@ -1,5 +1,6 @@
 import random
 import hashlib
+import asyncio
 from struct import pack
 
 import pytest
@@ -11,6 +12,7 @@ from kademlia.routing import RoutingTable
 
 @pytest.yield_fixture
 def bootstrap_node(event_loop):
+    event_loop = asyncio.get_event_loop()
     server = Server()
     event_loop.run_until_complete(server.listen(8468))
 

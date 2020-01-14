@@ -8,13 +8,14 @@ from kademlia.protocol import KademliaProtocol
 
 @pytest.mark.asyncio
 async def test_storing(bootstrap_node):
+    # create new node on 8469
     server = Server()
     await server.listen(bootstrap_node[1] + 1)
     await server.bootstrap([bootstrap_node])
     await server.set('key', 'value')
     result = await server.get('key')
 
-    assert result == 'value'
+    assert result[0] == 'value'
 
     server.stop()
 

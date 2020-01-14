@@ -92,7 +92,7 @@ class ValueSpiderCrawl(SpiderCrawl):
             if not response.happened():
                 toremove.append(peerid)
             elif response.has_value():
-                found_values.append((response.get_value()), peerid)
+                found_values.append(((response.get_value()), peerid))
             else:
                 peer = self.nearest.get_node(peerid)
                 self.nearest_without_value.push(peer)

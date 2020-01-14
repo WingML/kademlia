@@ -89,7 +89,6 @@ class TableTraverser:
     def __init__(self, table, startNode):
         index = table.get_bucket_for(startNode)
         table.buckets[index].touch_last_updated()
-        print(table.buckets[index].nodes.items())
         self.current_nodes = table.buckets[index].get_nodes()
         self.left_buckets = table.buckets[:index]
         self.right_buckets = table.buckets[(index + 1):]
