@@ -138,7 +138,7 @@ class App(object):
                 if io == 'help':
                     self.print_help()
                 elif io == 'get':
-                    print("Usage:<key>")
+                    print("Usage: <key>")
                     args = input().split(' ')
                     if len(args) != 1: print("Number of parameters does not match.")
                     else:

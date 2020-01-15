@@ -6,7 +6,8 @@ from kademlia.node import Node, NodeHeap
 
 
 class TestNode:
-    def test_long_id(self):  # pylint: disable=no-self-use
+    #
+    def test_long_id(self):
         rid = hashlib.sha1(str(random.getrandbits(255)).encode()).digest()
         node = Node(rid)
         assert node.long_id == int(rid.hex(), 16)

@@ -171,10 +171,11 @@ class RoutingTable:
 
     def add_contact(self, node):
         if self.record:
-            index = 0
             node.label = 'r'
-        else:
-            index = self.get_bucket_for(node)
+            bucket = self.buckets[0]
+            bucket.add_node(node)
+
+        index = self.get_bucket_for(node)
         bucket = self.buckets[index]
 
         # this will succeed unless the bucket is full
